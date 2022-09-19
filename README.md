@@ -34,5 +34,5 @@ No solution.
 
 #### TODO
 
-* More effective unit tests will be added.
-* Comment lines will be improved.
+- [ ] More effective unit tests will be added.
+- [ ] Comment lines will be improved.
