@@ -63,21 +63,21 @@ func (c *Case) Calc() (s uint, err bool) {
 					if -3 > y || y > 3 || 0 > py || py >= c.grid.height {
 						continue
 					}
-
-					ho := Hop{Position{px, py}, Position{x, y}}
-
-					// Check if not hops contain current hop.
-					if !slices.Contains(hs, ho) {
-						err := false
-
-						// Check if test case's obstacles overlaps current hop's point.
-						for i := 0; !err && i < len(c.obstacles); i++ {
-							err = c.obstacles[i].start.x <= ho.point.x && ho.point.x <= c.obstacles[i].end.x &&
-								c.obstacles[i].start.y <= ho.point.y && ho.point.y <= c.obstacles[i].end.y
-						}
-
-						// Append current hop to hops if test case's obstacles does not overlap current hop's point.
-						if !err {
+					
+					err = false
+					
+					// Check if test case's obstacles overlaps current hop's point.
+					for i := 0; !err && i < len(c.obstacles); i++ {
+						err = c.obstacles[i].start.x <= px && px <= c.obstacles[i].end.x &&
+							c.obstacles[i].start.y <= py && py <= c.obstacles[i].end.y
+					}
+					
+					// Append current hop to hops if test case's obstacles does not overlap current hop's point.
+					if !err {
+						ho := Hop{Position{px, py}, Position{x, y}}
+						
+						// Check if not hops contain current hop.
+						if !slices.Contains(hs, ho) {
 							hs = append(hs, ho)
 						}
 					}
