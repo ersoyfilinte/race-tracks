@@ -2,316 +2,258 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"golang.org/x/exp/slices"
+	"strconv"
 )
 
-type Test struct {
-	size struct {
-		width, height uint
+type Case struct {
+	grid struct {
+		width, height int
 	}
 
-	point     Route
-	obstacles []Obstacle
+	points    Path
+	obstacles []Path
 }
 
-type Route struct {
+type Path struct {
 	start, end Position
 }
 
 type Position struct {
-	x, y uint
-}
-
-type Obstacle struct {
-	point Route
-}
-
-type Possibilities struct {
-	hops []Hop
-}
-
-type Hop struct {
-	speed Velocity
-	point Position
-}
-
-type Velocity struct {
 	x, y int
 }
 
-func (o *Obstacle) Contains(p Position) bool {
-	return o.point.start.x <= p.x && p.x <= o.point.start.x && o.point.start.y <= p.y && p.y <= o.point.start.y
+type Hop struct {
+	point, speed Position
 }
 
-func (ps *Possibilities) Contains(h Hop) bool {
-	for _, ho := range ps.hops {
-		if ho == h {
-			return true
-		}
+func (c *Case) Calc() (s uint, err bool) {
+	var hs []Hop
+
+	// Append test case's start point with initial speed to hops if start point is inside grid.
+	if c.grid.width > c.points.start.x && c.grid.height > c.points.start.y {
+		hs = append(hs, Hop{c.points.start, Position{}})
 	}
 
-	return false
-}
+	// Loop steps if not number of current hops equals number of previous hops.
+	for n := 0; n != len(hs); s++ {
+		n = len(hs)
 
-func (t *Test) Calc() (bool, uint) {
-	var ps Possibilities
-	var r, err bool
-	var s, n uint
+		// Calculate new hops.
+		for _, h := range hs {
+			// Check if current hop's point equals test case's end point.
+			if h.point == c.points.end {
+				return s, false
+			}
 
-	ps.hops = append(ps.hops, Hop{})
+			// Calculate possible X positions of new hop's speed and point.
+			for x := h.speed.x - 1; x <= h.speed.x+1; x++ {
+				px := h.point.x + x
 
-	// Loop the steps.
-	for !r {
-		s++
+				// Validate X position of current hop's speed and point.
+				if -3 > x || x > 3 || 0 > px || px >= c.grid.width {
+					continue
+				}
 
-		// Loop previous hops.
-		for _, h := range ps.hops {
-			// Loop the possible X of speed.
-			for x := h.speed.x - 1; !r && x <= h.speed.x+1 && x >= -3 && x <= 3; x++ {
-				// Loop the possible Y of speed.
-				for y := h.speed.y - 1; !r && y <= h.speed.y+1 && y >= -3 && y <= 3; y++ {
-					// Check if the point is on the grid.
-					if int(h.point.x)+x >= 0 && int(h.point.x)+x < int(t.size.width) && int(h.point.y)+y >= 0 && int(h.point.y)+y < int(t.size.height) {
-						ho := Hop{Velocity{x, y}, Position{uint(int(h.point.x) + x), uint(int(h.point.y) + y)}}
+				// Calculate possible Y positions of new hop's speed and point.
+				for y := h.speed.y - 1; y <= h.speed.y+1; y++ {
+					py := h.point.y + y
 
-						// Check if previous hops contain current hop.
-						if !ps.Contains(ho) {
-							err = false
+					// Validate Y position of current hop's speed and point.
+					if -3 > y || y > 3 || 0 > py || py >= c.grid.height {
+						continue
+					}
 
-							// Check if the obstacles contain current point.
-							for _, o := range t.obstacles {
-								for x := math.Min(float64(o.point.start.x), float64(o.point.end.x)); !err && x <= math.Max(float64(o.point.start.x), float64(o.point.end.x)); x++ {
-									for y := math.Min(float64(o.point.start.y), float64(o.point.end.y)); !err && y <= math.Max(float64(o.point.start.y), float64(o.point.end.y)); y++ {
-										if ho.point == (Position{uint(x), uint(y)}) {
-											err = true
-										}
-									}
-								}
-							}
+					ho := Hop{Position{px, py}, Position{x, y}}
 
-							if !err {
-								r = ho.point == t.point.end
+					// Check if not hops contain current hop.
+					if !slices.Contains(hs, ho) {
+						err := false
 
-								ps.hops = append(ps.hops, ho)
-							}
+						// Check if test case's obstacles overlaps current hop's point.
+						for i := 0; !err && i < len(c.obstacles); i++ {
+							err = c.obstacles[i].start.x <= ho.point.x && ho.point.x <= c.obstacles[i].end.x &&
+								c.obstacles[i].start.y <= ho.point.y && ho.point.y <= c.obstacles[i].end.y
+						}
+
+						// Append current hop to hops if test case's obstacles does not overlap current hop's point.
+						if !err {
+							hs = append(hs, ho)
 						}
 					}
 				}
 			}
-
-			if r {
-				break
-			}
 		}
-
-		// Check the current length of the hops equal to the length of the previous hops.
-		err = n == uint(len(ps.hops))
-
-		if err {
-			break
-		}
-
-		n = uint(len(ps.hops))
 	}
 
-	return r, s
+	return 0, true
 }
 
 func main() {
-	var n uint
-
-	err := true
+	var n, on int
+	var cs []Case
 
 	// Ask for number of test cases and validate.
-	for err {
-		n = scan("Number of test cases: ")
-
-		err = n < 1
-
-		if err {
-			fmt.Println("Number of test cases must be greater than or equal to 1.")
+	for {
+		if n = Scan("Number of test cases: "); n >= 1 {
+			break
 		}
+
+		Print(0, "Number of test cases must be greater than or equal to 1.")
 	}
 
-	var ts []Test
+	// Ask for properties of each test cases and validate.
+	for i := 1; i <= n; i++ {
+		var c Case
 
-	// Loop the number of test cases and ask properties.
-	for i := uint(1); i <= n; i++ {
-		var t Test
-
-		err = true
-
-		// Ask and validate width of test case's grid.
-		for err {
-			t.size.width = scan(fmt.Sprintf("Width of %d. test case's grid: ", i))
-
-			err = t.size.width < 1 || t.size.width > 30
-
-			if err {
-				fmt.Printf("Width of %d. test case's grid must be greater than or equal to 1 and less than or equal to 30.\n", i)
+		// Ask for width of current test case's grid and validate.
+		for {
+			if c.grid.width = Scan("Width of %d. test case's grid: ", i); 1 <= c.grid.width && c.grid.width <= 30 {
+				break
 			}
+
+			Print(0, "Width of test case's grid must be greater than or equal to 1 and less than or equal to 30.")
 		}
 
-		err = true
-
-		// Ask and validate height of test case's grid.
-		for err {
-			t.size.height = scan(fmt.Sprintf("Height of %d. test case's grid: ", i))
-
-			err = t.size.height < 1 || t.size.height > 30
-
-			if err {
-				fmt.Printf("Height of %d. test case's grid must be greater than or equal to 1 and less than or equal to 30.\n", i)
+		// Ask for height of current test case's grid and validate.
+		for {
+			if c.grid.height = Scan("Height of %d. test case's grid: ", i); 1 <= c.grid.height && c.grid.height <= 30 {
+				break
 			}
+
+			Print(0, "Height of test case's grid must be greater than or equal to 1 and less than or equal to 30.")
 		}
 
-		err = true
-
-		// Ask and validate the X of test case's start point.
-		for err {
-			t.point.start.x = scan(fmt.Sprintf("X of %d. test case's start point: ", i))
-
-			err = t.point.start.x >= t.size.width
-
-			if err {
-				fmt.Printf("X of %d. test case's start point must be greater than or equal to 0 and less than %d.\n", i, t.size.width)
+		// Ask for X position of current test case's start point and validate.
+		for {
+			if c.points.start.x = Scan("X position of %d. test case's start point: ", i); c.points.start.x >= 0 {
+				break
 			}
+
+			Print(0, "X position of %d. test case's start point must be greater than or equal to 0.", i)
 		}
 
-		err = true
-
-		// Ask and validate the Y of test case's start point.
-		for err {
-			t.point.start.y = scan(fmt.Sprintf("Y of %d. test case's start point: ", i))
-
-			err = t.point.start.y >= t.size.height
-
-			if err {
-				fmt.Printf("Y of %d. test case's start point must be greater than or equal to 0 and less than %d.\n", i, t.size.height)
+		// Ask for Y position of current test case's start point and validate.
+		for {
+			if c.points.start.y = Scan("Y position of %d. test case's start point: ", i); c.points.start.y >= 0 {
+				break
 			}
+
+			Print(0, "Y position of %d. test case's start point must be greater than or equal to 0.", i)
 		}
 
-		err = true
-
-		// Ask and validate the X of test case's end point.
-		for err {
-			t.point.end.x = scan(fmt.Sprintf("X of %d. test case's end point: ", i))
-
-			err = t.point.end.x >= t.size.width
-
-			if err {
-				fmt.Printf("X of %d. test case's end point must be greater than or equal to 0 and less than %d.\n", i, t.size.width)
+		// Ask for X position of current test case's end point and validate.
+		for {
+			if c.points.end.x = Scan("X position of %d. test case's end point: ", i); c.points.end.x < c.grid.width {
+				break
 			}
+
+			Print(0, "X position of %d. test case's end point must be less than %d.", i, c.grid.width)
 		}
 
-		err = true
-
-		// Ask and validate the Y of test case's end point.
-		for err {
-			t.point.end.y = scan(fmt.Sprintf("Y of %d. test case's end point: ", i))
-
-			err = t.point.end.y >= t.size.height
-
-			if err {
-				fmt.Printf("Y of %d. test case's end point must be greater than or equal to 0 and less than %d.\n", i, t.size.height)
+		// Ask for Y position of current test case's end point and validate.
+		for {
+			if c.points.end.y = Scan("Y position of %d. test case's end point: ", i); c.points.end.y < c.grid.height {
+				break
 			}
+
+			Print(0, "Y position of %d. test case's end point must be less than %d.", i, c.grid.height)
 		}
 
-		on := scan(fmt.Sprintf("Number of %d. grid's obstacle: ", i))
+		// Ask for number of current test case's obstacles and validate.
+		for {
+			if on = Scan("Number of %d. test case's obstacles: ", i); 0 <= on && on < c.grid.width*c.grid.height {
+				break
+			}
 
-		// Loop the number of obstacles and ask properties.
-		for oi := uint(1); oi <= on; oi++ {
-			err = true
+			Print(0, "Number of %d. test case's obstacles must be greater than or equal to 0 and less than %d.", i, c.grid.width*c.grid.height)
+		}
 
-			for err {
-				var o Obstacle
+		// Ask for properties of current test case's each obstacle and validate.
+		for oi := 1; oi <= on; oi++ {
+			for {
+				var o Path
 
-				// Ask and validate the X of test case's obstacle's start point.
-				for err {
-					o.point.start.x = scan(fmt.Sprintf("X of %d. test case's %d. obstacle's start point: ", i, oi))
-
-					err = o.point.start.x >= t.size.width
-
-					if err {
-						fmt.Printf("X of %d. test case's %d. obstacle's start point must be greater than or equal to 0 and less than %d.\n", i, oi, t.size.width)
+				// Ask for X position of current test case's current obstacle's start point and validate.
+				for {
+					if o.start.x = Scan("X position of %d. test case's %d. obstacle's start point: ", i, oi); 0 <= o.start.x && o.start.x < c.grid.width {
+						break
 					}
+
+					Print(0, "X position of %d. test case's obstacle's start point must be greater than or equal to 0 and less than %d.", i, c.grid.width)
 				}
 
-				err = true
-
-				// Ask and validate the Y of test case's obstacle's start point.
-				for err {
-					o.point.start.y = scan(fmt.Sprintf("Y of %d. test case's %d. obstacle's start point: ", i, oi))
-
-					err = o.point.start.y >= t.size.height
-
-					if err {
-						fmt.Printf("Y of %d. test case's %d. obstacle's start point must be greater than or equal to 0 and less than %d.\n", i, oi, t.size.height)
+				// Ask for Y position of current test case's current obstacle's start point and validate.
+				for {
+					if o.start.y = Scan("Y position of %d. test case's %d. obstacle's start point: ", i, oi); 0 <= o.start.y && o.start.y < c.grid.height {
+						break
 					}
+
+					Print(0, "Y position of %d. test case's obstacle's start point must be greater than or equal to 0 and less than %d.", i, c.grid.height)
 				}
 
-				err = true
-
-				// Ask and validate the X of test case's obstacle's end point.
-				for err {
-					o.point.end.x = scan(fmt.Sprintf("X of %d. test case's %d. obstacle's end point: ", i, oi))
-
-					err = o.point.end.x >= t.size.width
-
-					if err {
-						fmt.Printf("X of %d. test case's %d. obstacle's end point must be greater than or equal to 0 and less than %d.\n", i, oi, t.size.width)
+				// Ask for X position of current test case's current obstacle's end point and validate.
+				for {
+					if o.end.x = Scan("X position of %d. test case's %d. obstacle's end point: ", i, oi); o.start.x <= o.end.x && o.end.x < c.grid.width {
+						break
 					}
+
+					Print(0, "X position of %d. test case's obstacle's end point must be greater than or equal to %d and less than %d.", i, o.start.x, c.grid.width)
 				}
 
-				err = true
-
-				// Ask and validate the Y of test case's obstacle's end point.
-				for err {
-					o.point.end.y = scan(fmt.Sprintf("Y of %d. test case's %d. obstacle's end point: ", i, oi))
-
-					err = o.point.end.y >= t.size.height
-
-					if err {
-						fmt.Printf("Y of %d. test case's %d. obstacle's end point must be greater than or equal to 0 and less than %d.\n", i, oi, t.size.height)
+				// Ask for Y position of current test case's current obstacle's end point and validate.
+				for {
+					if o.end.y = Scan("Y position of %d. test case's %d. obstacle's end point: ", i, oi); o.start.y <= o.end.y && o.end.y < c.grid.height {
+						break
 					}
+
+					Print(0, "Y position of %d. test case's obstacle's end point must be greater than or equal to %d and less than %d.", i, o.start.y, c.grid.height)
 				}
 
-				// Check if the obstacle contains the starting point.
-				err = o.Contains(t.point.start)
+				// Check if not current test case's current obstacle overlaps own start point.
+				if !(o.start.x <= c.points.start.x && c.points.start.x <= o.end.x && o.start.y <= c.points.start.y && c.points.start.y <= o.end.y) {
+					c.obstacles = append(c.obstacles, o)
 
-				if err {
-					fmt.Println("Error")
-				} else {
-					t.obstacles = append(t.obstacles, o)
+					break
 				}
+
+				Print(0, "Test case's obstacle should not overlap own start point.")
 			}
 		}
 
-		ts = append(ts, t)
+		cs = append(cs, c)
 	}
 
-	// Loop the test cases and calculate optimal solutions of them.
-	for i, t := range ts {
-		r, s := t.Calc()
+	// Calculate each test case's optimal solutions.
+	for i, c := range cs {
+		Print(3, "Calculating %d. test case.", i+1)
 
-		if !r {
-			fmt.Println("No solution.")
+		if s, err := c.Calc(); err {
+			Print(1, "%d. test case has no solution.", i+1)
 		} else {
-			fmt.Printf("%d. test case's optimal solution takes %d hops.\n", i+1, s)
+			Print(2, "%d. test case's optimal solution takes %d hops.", i+1, s)
 		}
 	}
 }
 
-func scan(format string) uint {
-	var a uint
+func Scan(format string, a ...any) (n int) {
+	var s string
 
-	fmt.Printf(format)
+	for {
+		fmt.Printf(format, a...)
 
-	_, err := fmt.Scan(&a)
+		if _, err := fmt.Scanln(&s); err == nil {
+			if n, err = strconv.Atoi(s); err == nil {
+				return n
+			}
 
-	if err != nil {
-		panic(err)
+			Print(0, "Enter a valid number.")
+		}
 	}
+}
 
-	return a
+func Print(color int, format string, a ...any) {
+	cs := [4]string{"\033[1;31m%s\033[0m", "\033[1;33m%s\033[0m", "\033[1;34m%s\033[0m", "\033[1;36m%s\033[0m"}
+
+	fmt.Printf(cs[color], fmt.Sprintf(format, a...)+"\n")
 }
