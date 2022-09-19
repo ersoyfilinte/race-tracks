@@ -231,7 +231,11 @@ func main() {
 		if s, err := c.Calc(); err {
 			Print(1, "%d. test case has no solution.", i+1)
 		} else {
-			Print(2, "%d. test case's optimal solution takes %d hops.", i+1, s)
+			if s > 1 {
+				Print(2, "%d. test case's optimal solution takes %d hops.", i+1, s)
+			} else {
+				Print(2, "%d. test case's optimal solution takes %d hop.", i+1, s)
+			}
 		}
 	}
 }
