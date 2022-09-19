@@ -31,3 +31,8 @@ The string 'No solution.' if there is no way the hopper can reach the finish poi
 Optimal solution takes 7 hops.
 No solution.
 ```
+
+#### TODO
+
+* More effective unit tests will be added.
+* Comment lines will be improved.
