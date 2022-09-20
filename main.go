@@ -227,15 +227,15 @@ func main() {
 
 	// Calculate each test case's optimal solutions.
 	for i, c := range cs {
-		Print(3, "Calculating %d. test case.", i+1)
+		Print(2, "Calculating %d. test case.", i+1)
 
 		if s, err := c.Calc(); err {
 			Print(1, "%d. test case has no solution.", i+1)
 		} else {
 			if s > 1 {
-				Print(2, "%d. test case's optimal solution takes %d hops.", i+1, s)
+				Print(3, "%d. test case's optimal solution takes %d hops.", i+1, s)
 			} else {
-				Print(2, "%d. test case's optimal solution takes %d hop.", i+1, s)
+				Print(3, "%d. test case's optimal solution takes %d hop.", i+1, s)
 			}
 		}
 	}
