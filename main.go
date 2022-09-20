@@ -67,9 +67,10 @@ func (c *Case) Calc() (s uint, err bool) {
 					err = false
 					
 					// Check if test case's obstacles overlaps current hop's point.
-					for i := 0; !err && i < len(c.obstacles); i++ {
-						err = c.obstacles[i].start.x <= px && px <= c.obstacles[i].end.x &&
-							c.obstacles[i].start.y <= py && py <= c.obstacles[i].end.y
+					for _, o := range c.obstacles {
+						if err = o.start.x <= px && px <= o.end.x && o.start.y <= py && py <= o.end.y; err {
+							break
+						}
 					}
 					
 					// Append current hop to hops if test case's obstacles does not overlap current hop's point.
